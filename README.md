@@ -1,10 +1,10 @@
-# Energeek Box Detector 📦
+# Energeek Box Detector 
 
 Sebuah *production-grade web application* yang menggunakan **Classical Computer Vision** untuk secara otomatis mendeteksi, mengklasifikasi, dan menghitung jumlah kotak biru yang berada di dalam maupun di luar dari kotak referensi utama (kotak putih).
 
 ---
 
-## 🎯 Apa Itu Aplikasi Ini?
+## Apa Itu Energeek Box Detector?
 
 Aplikasi ini dibuat untuk menyelesaikan masalah inspeksi industri secara otomatis. Diberikan sebuah gambar yang berisi satu kotak utama berwarna putih dengan garis tepi hitam, serta kumpulan kotak-kotak kecil berwarna biru (baik itu kotak solid murni maupun kotak dengan tekstur bergaris/hatch).
 
@@ -19,7 +19,7 @@ Aplikasi akan:
 
 ---
 
-## 🛠️ Teknologi yang Digunakan
+## Teknologi yang Digunakan
 
 Aplikasi ini sengaja dibangun dengan konsep *Full-Stack Minimal-Dependency* untuk menjaga performa tetap super cepat (*ultra-low latency*).
 
@@ -31,7 +31,7 @@ Aplikasi ini sengaja dibangun dengan konsep *Full-Stack Minimal-Dependency* untu
 
 ---
 
-## ⚙️ Cara Menggunakan Aplikasi (Usage Guide)
+## Cara Menggunakan Aplikasi (Usage Guide)
 
 ### 1. Clone Repository
 Pertama, salin kode program ini ke komputer Anda dan masuk ke dalam direktorinya:
@@ -54,7 +54,7 @@ uvicorn app.main:app --reload --port 8000
 
 ### 4. Buka Frontend Web UI
 Setelah server menyala (ditandai dengan pesan `Application startup complete` di terminal), buka browser Anda dan akses:
-> 👉 **http://localhost:8000/**
+> **http://localhost:8000/**
 
 ### 5. Cara Penggunaan Web UI
 1. Anda akan melihat halaman antarmuka (*dashboard*).
@@ -63,76 +63,59 @@ Setelah server menyala (ditandai dengan pesan `Application startup complete` di 
 
 ---
 
-# Computer Vision Pipeline Flowchart
+## Sederhana, Bagaimana Pipeline (Cara Kerja) Sistem Ini?
 
-Diagram di bawah ini mengilustrasikan urutan proses (*flowchart*) bagaimana gambar yang Anda *upload* diproses oleh sistem OpenCV dari awal hingga akhir, dengan penekanan pada **Hybrid Pipeline** yang baru saja kita buat.
+Aplikasi ini menggunakan sistem **Hybrid Pipeline** yang menggabungkan dua algoritma cerdas untuk dapat mengenali objek bergaris maupun objek solid murni.
 
-```mermaid
-graph TD
-    A([Input Image]) --> B(Preprocess: Resize & Blur)
-    
-    %% White Box Detection
-    B --> C[[1. Detect White Box]]
-    C --> C1[Thresholding: Filter pixel Hitam < 60]
-    C1 --> C2[findContours RETR_CCOMP]
-    C2 --> C3[Ambil kontur area paling besar]
-    C3 --> C4(Dapatkan 4 titik sudut kotak putih)
-    
-    %% Blue Box Detection (Hybrid)
-    B --> F[[2. Detect Blue Objects]]
-    
-    F --> G[Alg 1: Black Outline Segmenter]
-    G --> H[Thresholding: Filter pixel Hitam < 60]
-    H --> I[findContours RETR_CCOMP]
-    I --> J[Hapus kontur kecil & lubang luar]
-    J --> K[Validasi: Apakah area tsb mengandung >10% pixel Biru?]
-    K --> L[(Simpan ke Daftar A)]
-    
-    F --> M[Alg 2: Solid Color Segmenter]
-    M --> N[HSV Mask: Ambil murni pixel warna Biru]
-    N --> O[Morphological Close: Rapatkan celah kecil]
-    O --> P[findContours RETR_EXTERNAL]
-    P --> Q[Hapus kontur sangat kecil / noise]
-    Q --> R{Apakah posisinya menumpuk<br>dengan objek di Daftar A?}
-    R -- Ya --> S[Abaikan]
-    R -- Tidak --> T[(Tambahkan sebagai Kotak Solid Baru)]
-    
-    L --> U((Gabungkan Semua Objek Biru))
-    T --> U
-    
-    %% Classification & Output
-    C4 --> V[[3. Klasifikasi Posisi]]
-    U --> V
-    V --> W[Cek koordinat objek vs titik sudut Kotak Putih]
-    
-    W -- "Titik berada murni di dalam" --> X[Inside += 1 <br> Tandai warna Hijau]
-    W -- "Titik berada murni di luar" --> Y[Outside += 1 <br> Tandai warna Merah]
-    W -- "Ada titik di dalam & di luar" --> Z[Kepotong/Intersecting <br> Abaikan & Tandai warna Abu-abu]
-    
-    X --> AA[[4. Render Gambar Output]]
-    Y --> AA
-    Z --> AA
-    
-    AA --> BB[Gambar outline Kuning, <br> centroid, dan nomor ID]
-    BB --> CC([Return ke Frontend dalam bentuk JSON])
-    
-    %% Styling
-    style C fill:#f9f9f9,stroke:#e6e600,stroke-width:2px
-    style F fill:#e6f7ff,stroke:#0066cc,stroke-width:2px
-    style G fill:#fff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
-    style M fill:#fff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
-    style V fill:#f2e6ff,stroke:#6600cc,stroke-width:2px
+Berikut adalah diagram alur sederhana (*pipeline*) dari proses yang terjadi di belakang layar:
+
+```text
+       [ Input Image ]
+              |
+              v
+    ( Image Preprocessing )
+  Resize max 1024px & Denoising
+              |
+      +-------+-------+
+      |       |       |
+      v       v       v
+ White Box    |  Colored Object
+ Detection    |   Segmentation
+ (Threshold)  |    (HSV Mask)
+      |       |       |
+      |       v       |
+      | Black Outline |
+      |  Extraction   |
+      |  (Threshold)  |
+      +-------+-------+
+              |
+              v
+     Object Validation 
+ (Size & Position Filtering)
+              |
+              v
+   Merge Detection Result 
+   (Overlap elimination)
+              |
+              v
+   Position Classification
+ (Inside / Outside / Ignore)
+              |
+              v
+      Visual Annotation 
+    (Draw bounding boxes)
+              |
+              v
+    [ Return to Frontend ]
 ```
 
-## Penjelasan Singkat
-1. **Detect White Box (`white_box.py`)**: Ini adalah langkah pertama. Sistem mutlak harus mengetahui di mana batas reference areanya terlebih dahulu.
-2. **Detect Blue Objects (`blue_box.py`)**: Di sinilah *Hybrid Pipeline* bekerja.
-   - **Algoritma 1** mencari area yang **dibungkus oleh garis hitam** lalu mengecek isinya. Ini sangat akurat untuk kotak jenis *hatch/stripe*.
-   - **Algoritma 2** murni mencari area **berwarna biru** lalu mengecek apakah area itu belum terdeteksi. Ini jaring pengaman (*safety net*) yang sangat akurat untuk kotak solid tanpa garis luar.
-3. **Klasifikasi Posisi (`classifier.py`)**: OpenCV menggunakan `pointPolygonTest` untuk memeriksa apakah koordinat titik-titik dari kotak biru berada di dalam polygon (kotak putih) atau di luar. Jika sebagian titik di dalam dan sebagian di luar, maka dipastikan objek tersebut **memotong** garis referensi.
-4. **Render Gambar Output (`visualize.py`)**: Berbekal data koordinat dan status klasifikasi, sistem menggambar ulang poligon dan titik tengah (*centroid*) di atas *copy* dari gambar asli Anda, mengubahnya ke format `base64`, lalu mengirimkannya ke layar browser Anda.
+### Langkah-langkah Detail (*Step-by-Step*):
+1. **Preprocess**: Gambar di-*resize* ke ukuran maksimal tertentu agar beban komputasi stabil, kemudian diberikan efek *blur* halus untuk menghilangkan *noise*.
+2. **Segmentasi Referensi (White Box)**: OpenCV mencari batas terluar warna hitam (`Threshold < 60`) dan menggunakan hierarki berlapis (`RETR_CCOMP`) untuk mengambil kontur poligon persegi panjang terbesar sebagai landasan kotak referensi.
+3. **Hybrid Blue Box Segmentation**: 
+   - *Algoritma 1*: Mencari objek biru dengan mengidentifikasi pola *outline* hitam di sekelilingnya (sangat akurat untuk kotak bertipe arsiran/garis).
+   - *Algoritma 2*: Mencari objek berdasarkan *masking* HSV untuk warna biru murni (sangat akurat untuk kotak polos tanpa outline hitam).
+   - Keduanya digabung sambil memastikan tidak ada objek yang dihitung dobel menggunakan metode *bitwise_and overlap checking*.
+4. **Klasifikasi Matematika**: Fungsi `cv2.pointPolygonTest` di OpenCV digunakan untuk mengecek apakah titik *centroid* (titik tengah pasti) dari sebuah objek biru itu ada di dalam kemiringan kotak putih atau tidak. Jika kontur objek mengenai garis luar kotak putih, akan ditandai *Intersecting* dan dikeluarkan dari hitungan total.
+5. **Base64 Rendering**: Daripada menyimpan gambar di *hard disk* server setiap ada unggahan, sistem langsung menggambar anotasi di *memory RAM* dan mengubahnya menjadi *string Base64* untuk dikirim ke browser.
 
-
----
-
-> Dibuat untuk menyelesaikan inspeksi visual secara praktis dan sangat efisien! 🚀
