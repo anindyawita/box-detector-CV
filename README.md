@@ -37,7 +37,7 @@ Aplikasi ini sengaja dibangun dengan konsep *Full-Stack Minimal-Dependency* untu
 Pertama, salin kode program ini ke komputer Anda dan masuk ke dalam direktorinya:
 ```bash
 git clone https://github.com/anindyawita/box-detector-CV.git
-cd box-detector-CV
+cd energeek-box-detector
 ```
 
 ### 2. Install Dependencies
